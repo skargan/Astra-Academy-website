@@ -1,17 +1,19 @@
 # Astra Academy
 
 Multi-page HTML/CSS/JavaScript website with a small Node.js 24+ backend and
-persistent SQLite storage. No frontend framework, dependencies or build step.
+standard MySQL storage for hosting and SQLite for local work. Plain frontend,
+no build step; one backend dependency, mysql2.
 
 ## Run locally
 
 ```sh
+npm ci
 npm start
 npm test
 ```
 
-Without npm, use `node server/server.mjs` and
-`node --test tests/platform.test.mjs`.
+After dependencies are installed, direct equivalents are `node server/server.mjs`
+and `node --test tests/*.test.mjs`.
 Open `http://127.0.0.1:4173`.
 
 The default is a **local-only prototype**. Sample dates, prices, instructors,
@@ -73,44 +75,15 @@ Real Stripe checkout and email delivery have **not** been verified against an
 account. Use Stripe test mode and a verified sending domain before live activation.
 The demo exercises the application's transitions without external services.
 
-## Hosting
+## Hosting and ownership
 
-Use a persistent Node.js 24+ environment. Hostinger Business/Cloud Node hosting
-or a VPS may be suitable; verify that the chosen environment preserves the
-configured SQLite path across deployments/restarts. A Hostinger VPS is the
-straightforward option when filesystem persistence needs explicit control.
-Static-only hosting will render HTML but cannot operate forms, accounts or payments.
+Use Hostinger Business Node hosting with Node.js 24 and a separate MySQL database.
+The same app can run on another Node.js/MySQL host. No Hostinger SDK is used.
 
-Copy `.env.example` to `.env` only on the server. Supply HTTPS `BASE_URL`,
-`DEMO_MODE=false`, persistent `DB_PATH`, an administrator email and a strong
-administrator password, transactional email configuration and Stripe keys.
-Production startup requires HTTPS and configured email. Checkout additionally
-requires seller identity fields and explicit `LIVE_PAYMENTS_ENABLED=true`.
-Never commit the resulting `.env`, database or real records.
+See [DEPLOYMENT.md](DEPLOYMENT.md) for settings, [OPERATIONS.md](OPERATIONS.md)
+for ownership, backup and migration, and `.env.hostinger.example` for a public
+read-only preview. Public modes require MySQL; local demo remains SQLite.
 
-Subscribe the Stripe webhook at `/api/webhook` to:
-
-- `checkout.session.completed`, `checkout.session.expired`,
-  `checkout.session.async_payment_succeeded`;
-- `invoice.paid`, `invoice.payment_failed`;
-- `customer.subscription.updated`, `customer.subscription.deleted`;
-- `charge.refunded`.
-
-Configure the Stripe customer portal for payment methods, invoices and
-cancellation. Leave subscription product/price switching disabled, because
-membership tiers are assigned through the reviewed application.
-
-## Before public launch
-
-Replace prototype profiles/dates, confirm the offer and seller details, and
-finalize the commercial/privacy terms. Supply a Discord invitation.
-Verify account emails, Stripe test checkout, subscription renewal/cancellation,
-refunds and webhook delivery. Back up the SQLite database through a consistent
-SQLite backup/snapshot process. Restrict production administrator access and
-add monitoring and operational recovery procedures.
-
-Newsletter signup, double confirmation and subscriber administration are
-implemented; bulk newsletter composition/sending is intentionally not included.
-Refund requests are reviewed by an administrator, including eligibility and
-annual-month proration; they are not automatically adjudicated by the server.
-No real deployment, card charge or external email is implied by this prototype.
+The app is not deployed. Public preview does not collect accounts, newsletter
+subscriptions, bookings or payments. Production requires configured email,
+final offers/terms and verified provider integration before payment activation.

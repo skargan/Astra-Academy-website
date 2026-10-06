@@ -146,6 +146,18 @@ async function main(){
   if($('#events-page'))$('#events-page').innerHTML=eventCards(events);
   renderPlans();document.querySelectorAll('input[name=cycle]').forEach(i=>i.addEventListener('change',renderPlans));
   instructorCards();instructorDetail();eventDetail();
+  if(config.preview){
+   let banner=$('#prototype-banner');
+   if(!banner){banner=document.createElement('p');banner.className='notice';document.querySelector('main')?.prepend(banner);}
+   banner.hidden=false;banner.textContent='Svetainės peržiūra · registracija ir mokėjimai dar neatidaryti.';
+   document.querySelectorAll('form').forEach(form=>{
+    form.addEventListener('submit',e=>e.preventDefault());
+    form.querySelectorAll('input,textarea,select,button').forEach(control=>control.disabled=true);
+    const message=document.createElement('p');message.className='form-status';message.textContent='Registracija dar neatidaryta.';form.append(message);
+   });
+   for(const selector of ['#account-content','#admin-content','#payment-content'])if($(selector))$(selector).textContent='Registracija dar neatidaryta.';
+   return;
+  }
   bindForm('#register-form','/api/register');
   bindForm('#login-form','/api/login',data=>{me=data;location.href=nextPage();});
   bindForm('#reset-request-form','/api/password/request');

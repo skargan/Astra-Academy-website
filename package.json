@@ -1,8 +1,17 @@
 {
   "name": "astra-academy",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
-  "engines": {"node": ">=24.0.0"},
-  "scripts": {"start": "node --env-file-if-exists=.env server/server.mjs", "test": "node --test tests/*.test.mjs"}
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server/server.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "backup": "node --env-file-if-exists=.env server/backup.mjs"
+  },
+  "dependencies": {
+    "mysql2": "3.24.5"
+  }
 }

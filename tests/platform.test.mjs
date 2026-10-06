@@ -4,7 +4,7 @@ import {mkdtemp,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHmac} from 'node:crypto';
-import {createApp} from '../server/server.mjs';
+import {createApp} from './support/app.mjs';
 import {verifyWebhook} from '../server/payments.mjs';
 
 test('application, acceptance, membership, booking, attendance and refunds persist',async()=>{
@@ -36,17 +36,17 @@ test('application, acceptance, membership, booking, attendance and refunds persi
   assert.equal((await call('/api/checkout',{kind:'membership',terms:true},actors.member)).status,400,'no duplicate active subscription');
   r=await call('/api/checkout',{kind:'event',eventId:'hike',terms:true},actors.member);assert.equal(r.data.amount,2250,'community discount is calculated on server');
   await call('/api/demo-pay',{orderId:r.data.orderId},actors.member);
-  let booking=app.db.prepare("SELECT * FROM bookings WHERE user_id=? AND event_id='hike'").get(userId);
+  let booking=(await app.db.prepare("SELECT * FROM bookings WHERE user_id=? AND event_id='hike'").get(userId));
   await call('/api/admin/attendance',{bookingId:booking.id,attended:true},actors.admin);
   assert.equal((await call('/api/me',undefined,actors.member)).data.badges[0].badge,'Pirmasis žingsnis');
   assert.equal((await call('/api/checkout',{kind:'event',eventId:'hike',terms:true},actors.member)).status,400,'no duplicate booking');
   await call('/api/admin/attendance',{bookingId:booking.id,attended:false},actors.admin);
   assert.equal((await call('/api/me',undefined,actors.member)).data.badges.length,0,'attendance correction removes earned badge');
   r=await call('/api/requests',{kind:'booking_refund',target:booking.id,reason:'Nebegaliu dalyvauti.'},actors.member);assert.equal(r.status,200);
-  const request=app.db.prepare("SELECT * FROM requests WHERE target=?").get(booking.id);
+  const request=(await app.db.prepare("SELECT * FROM requests WHERE target=?").get(booking.id));
   assert.equal((await call('/api/admin/request',{requestId:request.id,action:'refund',amount:999999},actors.admin)).status,400);
   assert.equal((await call('/api/admin/request',{requestId:request.id,action:'refund',amount:2250},actors.admin)).status,200);
-  assert.equal(app.db.prepare('SELECT status FROM bookings WHERE id=?').get(booking.id).status,'refunded');
+  assert.equal((await app.db.prepare('SELECT status FROM bookings WHERE id=?').get(booking.id)).status,'refunded');
   await call('/api/membership/cancel',{},actors.member);
   assert.equal((await call('/api/me',undefined,actors.member)).data.membership.cancel_end,1);
   const email='applicant@example.test';
@@ -68,19 +68,19 @@ test('application, acceptance, membership, booking, attendance and refunds persi
   assert.equal((await call('/api/profile',{name:'Forged'},actors.second,{'X-CSRF-Token':'wrong'})).status,403);
   r=await call('/api/newsletter',{name:'Reader',email:'reader@example.test',consent:true});assert.equal(r.status,200);
   const confirmation=new URL(r.data.demoLink).searchParams.get('confirm');
-  assert.equal(app.db.prepare('SELECT status FROM subscribers WHERE email=?').get('reader@example.test').status,'pending');
+  assert.equal((await app.db.prepare('SELECT status FROM subscribers WHERE email=?').get('reader@example.test')).status,'pending');
   await call('/api/newsletter/confirm',{token:confirmation});
-  assert.equal(app.db.prepare('SELECT status FROM subscribers WHERE email=?').get('reader@example.test').status,'active');
+  assert.equal((await app.db.prepare('SELECT status FROM subscribers WHERE email=?').get('reader@example.test')).status,'active');
   await call('/api/newsletter/unsubscribe',{token:confirmation});
-  assert.equal(app.db.prepare('SELECT status FROM subscribers WHERE email=?').get('reader@example.test').status,'unsubscribed');
+  assert.equal((await app.db.prepare('SELECT status FROM subscribers WHERE email=?').get('reader@example.test')).status,'unsubscribed');
   await call('/api/admin/instructor',{id:'field',name:'Edited placeholder',specialty:'Outdoor',bio:'Test profile',placeholder:true},actors.admin);
-  await new Promise(resolve=>app.server.close(resolve));
+  await app.close();
   app=await createApp({demo:true,dbPath,baseUrl:origin});await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));target='http://127.0.0.1:'+app.server.address().port;
   assert.equal((await call('/api/me',undefined,actors.member)).data.membership.cancel_end,1,'membership persists after restart');
   assert.equal((await call('/api/config')).data.instructors.find(i=>i.id==='field').name,'Edited placeholder','admin edits persist after restart');
   assert.equal((await fetch(target+'/.env')).status,404);
   assert.equal((await fetch(target+'/server/server.mjs')).status,404);
- }finally{await new Promise(resolve=>app.server.close(resolve));await rm(directory,{recursive:true,force:true});}
+ }finally{await app.close();await rm(directory,{recursive:true,force:true});}
 });
 
 test('capacity and free benefit cannot be overbooked',async()=>{
@@ -88,26 +88,42 @@ test('capacity and free benefit cannot be overbooked',async()=>{
  const app=await createApp({demo:true,dbPath:join(directory,'test.sqlite'),baseUrl:origin});
  await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
  const target='http://127.0.0.1:'+app.server.address().port;
- const request=async(route,body,actor={})=>{
-  const r=await fetch(target+route,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json',Cookie:actor.cookie||'','X-CSRF-Token':actor.csrf||''},body:JSON.stringify(body)});
+ const request=async(route,body,actor={},destination=target)=>{
+  const r=await fetch(destination+route,{method:'POST',headers:{Origin:origin,'Content-Type':'application/json',Cookie:actor.cookie||'','X-CSRF-Token':actor.csrf||''},body:JSON.stringify(body)});
   if(r.headers.get('set-cookie'))actor.cookie=r.headers.get('set-cookie').split(';')[0];
   const data=await r.json();if(data.csrf)actor.csrf=data.csrf;return {status:r.status,data};
  };
  try{
   const member={};const login=await request('/api/demo-login',{role:'member'},member);
   const event={id:'one-seat',title:'Capacity test',date:new Date(Date.now()+86400000).toISOString(),place:'Test',description:'Test',price:0,capacity:1,category:'intro',instructor:'field',published:true};
-  app.db.prepare('INSERT INTO events VALUES(?,?)').run(event.id,JSON.stringify(event));
+  (await app.db.prepare('INSERT INTO events VALUES(?,?)').run(event.id,JSON.stringify(event)));
   const user=login.data.user;
   const r=await request('/api/checkout',{kind:'event',eventId:event.id,terms:true},member);assert.equal(r.status,200);assert.equal(r.data.free,true);
   const admin={};await request('/api/demo-login',{role:'admin'},admin);
   assert.equal((await request('/api/checkout',{kind:'event',eventId:event.id,terms:true},admin)).status,400);
-  app.db.prepare("INSERT INTO memberships(user_id,plan,cycle,status,until,started) VALUES(?,?,?,'active',?,?)").run(user.id,'practice','month',Date.now()+30*86400000,Date.now());
-  for(const eventId of ['hike-one','hike-two']){
-   app.db.prepare('INSERT INTO events VALUES(?,?)').run(eventId,JSON.stringify({...event,id:eventId,price:2500,capacity:10,category:'hike'}));
+  await app.db.run('INSERT INTO events VALUES(?,?)','race-seat',JSON.stringify({...event,id:'race-seat'}));
+  const racing=await Promise.all([member,admin].map(actor=>request('/api/checkout',{kind:'event',eventId:'race-seat',terms:true},actor)));
+  assert.deepEqual(racing.map(r=>r.status).sort(),[200,400],'simultaneous buyers cannot exceed capacity');
+  if(process.env.ASTRA_TEST_MYSQL==='true'){
+   const secondApp=await createApp({demo:true,dbPath:join(directory,'test.sqlite'),baseUrl:origin});
+   await new Promise(resolve=>secondApp.server.listen(0,'127.0.0.1',resolve));
+   try{
+    await app.db.run('INSERT INTO events VALUES(?,?)','two-app-seat',JSON.stringify({...event,id:'two-app-seat'}));
+    const acrossApps=await Promise.all([
+     request('/api/checkout',{kind:'event',eventId:'two-app-seat',terms:true},member),
+     request('/api/checkout',{kind:'event',eventId:'two-app-seat',terms:true},admin,'http://127.0.0.1:'+secondApp.server.address().port)
+    ]);
+    assert.deepEqual(acrossApps.map(r=>r.status).sort(),[200,400],'database lock also protects overlapping deployments');
+   }finally{await secondApp.close();}
   }
-  assert.equal((await request('/api/checkout',{kind:'event',eventId:'hike-one',terms:true},member)).data.free,true);
-  assert.equal((await request('/api/checkout',{kind:'event',eventId:'hike-two',terms:true},member)).data.amount,2000,'second monthly hike gets discount, not a second free place');
- }finally{await new Promise(resolve=>app.server.close(resolve));await rm(directory,{recursive:true,force:true});}
+  (await app.db.prepare("INSERT INTO memberships(user_id,plan,cycle,status,until,started) VALUES(?,?,?,'active',?,?)").run(user.id,'practice','month',Date.now()+30*86400000,Date.now()));
+  for(const eventId of ['hike-one','hike-two']){
+   (await app.db.prepare('INSERT INTO events VALUES(?,?)').run(eventId,JSON.stringify({...event,id:eventId,price:2500,capacity:10,category:'hike'})));
+  }
+  const hikes=await Promise.all(['hike-one','hike-two'].map(eventId=>request('/api/checkout',{kind:'event',eventId,terms:true},member)));
+  assert.equal(hikes.filter(r=>r.data.free).length,1);
+  assert.equal(hikes.find(r=>!r.data.free).data.amount,2000,'simultaneous monthly hikes share only one free benefit');
+ }finally{await app.close();await rm(directory,{recursive:true,force:true});}
 });
 
 test('webhook authentication rejects forged and stale signatures',()=>{
@@ -127,10 +143,10 @@ test('signed payment notifications enforce amount and are idempotent',async()=>{
  await new Promise(resolve=>app.server.listen(0,'127.0.0.1',resolve));
  const target='http://127.0.0.1:'+app.server.address().port;
  try{
-  const user=app.db.prepare("SELECT * FROM users WHERE email='member@example.test'").get();
+  const user=(await app.db.prepare("SELECT * FROM users WHERE email='member@example.test'").get());
   const created=Date.now(),booking='test-booking',order='test-order';
-  app.db.prepare('INSERT INTO bookings(id,user_id,event_id,status,price,created,expires) VALUES(?,?,?,?,?,?,?)').run(booking,user.id,'hike','pending',2500,created,created+1800000);
-  app.db.prepare('INSERT INTO orders VALUES(?,?,?,?,?,?,?,?,?,?)').run(order,user.id,'event',booking,2500,'pending','cs_test',null,created,created+1800000);
+  (await app.db.prepare('INSERT INTO bookings(id,user_id,event_id,status,price,created,expires) VALUES(?,?,?,?,?,?,?)').run(booking,user.id,'hike','pending',2500,created,created+1800000));
+  (await app.db.prepare('INSERT INTO orders VALUES(?,?,?,?,?,?,?,?,?,?)').run(order,user.id,'event',booking,2500,'pending','cs_test',null,created,created+1800000));
   const post=async(event,signature=true)=>{
    const raw=JSON.stringify(event),t=Math.floor(Date.now()/1000);
    const sig=createHmac('sha256',secret).update(t+'.'+raw).digest('hex');
@@ -139,22 +155,22 @@ test('signed payment notifications enforce amount and are idempotent',async()=>{
   };
   const event={id:'evt_good',created:Math.floor(Date.now()/1000),type:'checkout.session.completed',data:{object:{id:'cs_test',mode:'payment',payment_status:'paid',currency:'eur',amount_total:2500,payment_intent:'pi_test',metadata:{order_id:order}}}};
   assert.equal(await post(event,false),400);
-  assert.equal(app.db.prepare('SELECT status FROM orders WHERE id=?').get(order).status,'pending');
+  assert.equal((await app.db.prepare('SELECT status FROM orders WHERE id=?').get(order)).status,'pending');
   assert.equal(await post({...event,id:'evt_wrong_amount',data:{object:{...event.data.object,amount_total:1}}}),200);
-  assert.equal(app.db.prepare('SELECT status FROM orders WHERE id=?').get(order).status,'pending');
+  assert.equal((await app.db.prepare('SELECT status FROM orders WHERE id=?').get(order)).status,'pending');
+  assert.deepEqual(await Promise.all([post(event),post(event)]),[200,200]);
+  assert.equal((await app.db.prepare('SELECT status FROM bookings WHERE id=?').get(booking)).status,'confirmed');
   assert.equal(await post(event),200);
-  assert.equal(app.db.prepare('SELECT status FROM bookings WHERE id=?').get(booking).status,'confirmed');
-  assert.equal(await post(event),200);
-  assert.equal(app.db.prepare("SELECT COUNT(*) count FROM webhook_events WHERE id='evt_good'").get().count,1);
-  const adminUser=app.db.prepare("SELECT * FROM users WHERE email='admin@example.test'").get();
-  const canceled=JSON.parse(app.db.prepare("SELECT payload FROM events WHERE id='hike'").get().payload);
-  canceled.canceled=true;app.db.prepare("UPDATE events SET payload=? WHERE id='hike'").run(JSON.stringify(canceled));
-  app.db.prepare('INSERT INTO bookings(id,user_id,event_id,status,price,created,expires) VALUES(?,?,?,?,?,?,?)').run('booking-late',adminUser.id,'hike','pending',2500,created,created+1800000);
-  app.db.prepare('INSERT INTO orders VALUES(?,?,?,?,?,?,?,?,?,?)').run('order-late',adminUser.id,'event','booking-late',2500,'pending','cs_late',null,created,created+1800000);
+  assert.equal((await app.db.prepare("SELECT COUNT(*) count FROM webhook_events WHERE id='evt_good'").get()).count,1);
+  const adminUser=(await app.db.prepare("SELECT * FROM users WHERE email='admin@example.test'").get());
+  const canceled=JSON.parse((await app.db.prepare("SELECT payload FROM events WHERE id='hike'").get()).payload);
+  canceled.canceled=true;(await app.db.prepare("UPDATE events SET payload=? WHERE id='hike'").run(JSON.stringify(canceled)));
+  (await app.db.prepare('INSERT INTO bookings(id,user_id,event_id,status,price,created,expires) VALUES(?,?,?,?,?,?,?)').run('booking-late',adminUser.id,'hike','pending',2500,created,created+1800000));
+  (await app.db.prepare('INSERT INTO orders VALUES(?,?,?,?,?,?,?,?,?,?)').run('order-late',adminUser.id,'event','booking-late',2500,'pending','cs_late',null,created,created+1800000));
   await post({...event,id:'evt_late',data:{object:{...event.data.object,id:'cs_late',payment_intent:'pi_late',metadata:{order_id:'order-late'}}}});
-  assert.equal(app.db.prepare("SELECT status FROM bookings WHERE id='booking-late'").get().status,'refund_requested','payment after organizer cancellation creates a refund request');
+  assert.equal((await app.db.prepare("SELECT status FROM bookings WHERE id='booking-late'").get()).status,'refund_requested','payment after organizer cancellation creates a refund request');
  }finally{
   if(previous===undefined)delete process.env.STRIPE_WEBHOOK_SECRET;else process.env.STRIPE_WEBHOOK_SECRET=previous;
-  await new Promise(resolve=>app.server.close(resolve));await rm(directory,{recursive:true,force:true});
+  await app.close();await rm(directory,{recursive:true,force:true});
  }
 });
