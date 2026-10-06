@@ -465,10 +465,12 @@ export async function createApp(options={}) {
  if(db.driver==='sqlite')server.on('close',()=>db.close());
  return {server,db,mode,close};
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href){
+export async function startApp(){
  const app=await createApp(),demo=app.mode==='demo';
  const host=process.env.HOST||(demo?'127.0.0.1':'0.0.0.0');
  if(demo&&host!=='127.0.0.1'&&host!=='::1')throw new Error('Demo mode must bind to loopback.');
- app.server.listen(Number(process.env.PORT||4173),host,()=>console.log('Astra preview: '+(process.env.BASE_URL||'http://127.0.0.1:4173')));
+ app.server.listen(Number(process.env.PORT||4173),host,()=>console.log('Astra listening on port '+app.server.address().port));
  for(const signal of ['SIGINT','SIGTERM'])process.once(signal,()=>app.close().then(()=>process.exit(0),()=>process.exit(1)));
+ return app;
 }
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)await startApp();

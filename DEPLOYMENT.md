@@ -17,7 +17,7 @@ The local SQLite suite also passed; its two MySQL-specific scenarios are skipped
    repository skargan/Astra-Academy-website, branch main, repository root.
    Runtime Node.js 24. Install dependencies with npm ci. There is no build step.
    Start command: npm start. If Hostinger requests an entry file instead, use
-   server/server.mjs. Confirm the actual panel options; do not invent a build command.
+   server/start.mjs. Confirm the actual panel options; do not invent a build command.
 2. Create a dedicated MySQL database and user through hosting administration.
    Configure its connection values in the app's environment settings, never GitHub.
    Use the host shown in the database settings; Hostinger documents localhost for
