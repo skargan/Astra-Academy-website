@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Astra laiškai — Astra Academy</title>
+<meta name="theme-color" content="#101010">
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="platform.css">
+<script src="platform.js" defer>
+</script>
+</head>
+<body data-page="naujienlaiskis">
+<a class="skip-link" href="#top">Pereiti prie turinio</a>
+<div id="prototype-banner" hidden>
+</div>
+<header class="site-header">
+<a class="brand" href="index.html" aria-label="Astra Academy pradžia">
+<img class="brand-seal" src="assets/aa-star.webp" width="56" height="56" alt="">
+<span class="brand-name">ASTRA <small>ACADEMY</small>
+</span>
+</a>
+<nav aria-label="Pagrindinė navigacija">
+<a href="renginiai.html">Renginiai</a>
+<a href="naryste.html">Narystė</a>
+<a href="instruktoriai.html">Instruktoriai</a>
+<a href="naujienlaiskis.html">Laiškai</a>
+<a class="nav-cta" href="paskyra.html">Mano Astra</a>
+</nav>
+</header>
+<main id="top" tabindex="-1" class="page-main">
+<div class="page-intro">
+<p class="section-label">LAIKYK RYŠĮ</p>
+<h1>Kitą kartą susitinkam?</h1>
+<p class="hero-lead">Atsiųsime artimiausius žygius, seminarus ir kvietimus. Kai turėsime ką pasiūlyti. Atsisakyti galėsi bet kuriame laiške.</p>
+</div>
+<form id="newsletter-form" class="form-panel">
+<label>Vardas <span class="muted">(nebūtina)</span>
+<input name="name" maxlength="80" autocomplete="given-name">
+</label>
+<label>El. paštas<input name="email" type="email" autocomplete="email" required>
+</label>
+<label class="check">
+<input type="checkbox" name="consent" required> Noriu gauti Astra laiškus. Susipažinau su <a href="privatumas.html">privatumo informacija</a>.</label>
+<button class="button primary">Užsisakyti laiškus ↗</button>
+<p id="status" class="form-status" role="status" aria-live="polite">
+</p>
+</form>
+<div id="newsletter-confirm" hidden class="panel">
+</div>
+</main>
+<footer>
+<a class="footer-wordmark" href="index.html">
+<img src="assets/spartan-horizontal.webp" width="1100" height="367" alt="Astra Academy" loading="lazy">
+</a>
+<div>
+<a href="taisykles.html">Dalyvavimo ir grąžinimo sąlygos</a>
+<br>
+<a href="privatumas.html">Privatumas</a>
+</div>
+<p>© <span id="year">2026</span> Astra Academy</p>
+</footer>
+</body>
+</html>

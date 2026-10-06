@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="lt">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Narystės paraiška — Astra Academy</title>
+<meta name="theme-color" content="#101010">
+<link rel="icon" href="assets/favicon.png">
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="platform.css">
+<script src="platform.js" defer>
+</script>
+</head>
+<body data-page="paraiska">
+<a class="skip-link" href="#top">Pereiti prie turinio</a>
+<div id="prototype-banner" hidden>
+</div>
+<header class="site-header">
+<a class="brand" href="index.html" aria-label="Astra Academy pradžia">
+<img class="brand-seal" src="assets/aa-star.webp" width="56" height="56" alt="">
+<span class="brand-name">ASTRA <small>ACADEMY</small>
+</span>
+</a>
+<nav aria-label="Pagrindinė navigacija">
+<a href="renginiai.html">Renginiai</a>
+<a href="naryste.html">Narystė</a>
+<a href="instruktoriai.html">Instruktoriai</a>
+<a href="naujienlaiskis.html">Laiškai</a>
+<a class="nav-cta" href="paskyra.html">Mano Astra</a>
+</nav>
+</header>
+<main id="top" tabindex="-1" class="page-main">
+<div class="page-intro">
+<p class="section-label">PRISISTATYK</p>
+<h1>Ką norėtum veikti kartu?</h1>
+<p class="hero-lead">Kelios eilutės apie tave. Nereikia įspūdingo CV — norime suprasti, kas tave atveda į Astra.</p>
+</div>
+<div id="login-prompt" hidden class="panel">
+<p>Paraiškai reikalinga paskyra.</p>
+<a class="button primary" href="registracija.html?next=paraiska.html">Sukurti paskyrą</a> <a class="button secondary" href="prisijungti.html?next=paraiska.html">Prisijungti</a>
+</div>
+<form id="application-form" class="form-panel" hidden>
+<label>Narystė<select name="plan" id="application-plan">
+</select>
+</label>
+<label>Apmokėjimas<select name="cycle">
+<option value="month">Kas mėnesį</option>
+<option value="year">Kas metus</option>
+</select>
+</label>
+<label>Kas tave domina ir ką norėtum veikti kartu?<textarea name="motivation" minlength="10" maxlength="500" rows="4" required>
+</textarea>
+</label>
+<label id="support-field" hidden>Atramos narystę renkuosi, nes<select name="support">
+<option value="">Pasirink</option>
+<option value="student">Studijuoju</option>
+<option value="budget">Šiuo metu renkuosi pagal ribotą biudžetą</option>
+</select>
+</label>
+<label class="check">
+<input type="checkbox" name="adultMale" required> Esu vyras, man bent 18 metų, ir noriu dalyvauti bendruomenės veikloje.</label>
+<p class="muted">Paraiška nieko nekainuoja. Priėmimo sprendimą ir mokėjimo galimybę rasi paskyroje.</p>
+<button class="button primary" type="submit">Pateikti paraišką ↗</button>
+<p id="status" class="form-status" role="status" aria-live="polite">
+</p>
+</form>
+<div id="application-existing">
+</div>
+</main>
+<footer>
+<a class="footer-wordmark" href="index.html">
+<img src="assets/spartan-horizontal.webp" width="1100" height="367" alt="Astra Academy" loading="lazy">
+</a>
+<div>
+<a href="taisykles.html">Dalyvavimo ir grąžinimo sąlygos</a>
+<br>
+<a href="privatumas.html">Privatumas</a>
+</div>
+<p>© <span id="year">2026</span> Astra Academy</p>
+</footer>
+</body>
+</html>

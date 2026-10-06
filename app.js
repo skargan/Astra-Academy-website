@@ -1,64 +1,9 @@
-// Džiugas: edit this list to update the event cards.
-// Keep state as "Data netrukus" until a date is confirmed.
-// registrationUrl: leave empty for an email enquiry, or add the real https:// booking URL.
-const events = [
-  {
-    state: "Data netrukus",
-    title: "Susipažink su Astra",
-    description: "Atviras susitikimas internetu. Sužinok apie žygius ir užsiėmimus, susipažink su bendruomene ir užduok savo klausimus.",
-    place: "Internetu",
-    price: "Nemokamai",
-    registrationUrl: ""
-  },
-  {
-    state: "Data netrukus",
-    title: "Sekmadienio žygis",
-    description: "3–5 valandos gamtoje: žygis, praktinė užduotis ir bendras aptarimas. Prisijunk vienas arba su draugu.",
-    place: "Vilnius / apylinkės",
-    price: "Kaina netrukus",
-    registrationUrl: ""
-  },
-  {
-    state: "Data netrukus",
-    title: "Strategija kasdienybėje",
-    description: "Kaip pasirinkti, kam skirti savo laiką ir jėgas? Seminaras apie prioritetus, sprendimų pasekmes ir veiksmų planą.",
-    place: "Vilnius",
-    price: "Kaina netrukus",
-    registrationUrl: ""
-  }
+// Initial public event data. Edit these seeds before the first server run.
+// After launch, update live events through administravimas.html.
+export const events = [
+  {id:'intro',title:'Susipažink su Astra',description:'Atviras susitikimas internetu: susipažink su bendruomene ir užduok klausimus.',date:'2026-10-22T19:00:00+03:00',place:'Internetu',price:0,capacity:30,category:'intro',instructor:'community',published:true,prototype:true},
+  {id:'hike',title:'Sekmadienio žygis',description:'3–5 valandos gamtoje: orientavimosi užduotis, žygis ir bendras aptarimas.',date:'2026-10-25T10:00:00+02:00',place:'Vilnius / apylinkės',price:2500,capacity:16,category:'hike',instructor:'field',published:true,prototype:true},
+  {id:'strategy',title:'Strategija kasdienybėje',description:'Prioritetai, pasirinkimų pasekmės ir aiškus veiksmų planas. Seminaras su praktinėmis užduotimis.',date:'2026-10-29T19:00:00+02:00',place:'Vilnius',price:3500,capacity:18,category:'seminar',instructor:'strategy',published:true,prototype:true},
+  {id:'circle',title:'Bendruomenės vakaras',description:'Laikas susipažinti, pasidalinti patirtimi ir aptarti naujus sumanymus.',date:'2026-10-28T19:00:00+02:00',place:'Vilnius',price:1500,capacity:14,category:'community',instructor:'community',published:true,prototype:true},
+  {id:'camp',title:'Savaitgalis gamtoje',description:'Dvi dienos lauko įgūdžiams, komandiniam darbui ir pokalbiams prie laužo.',date:'2026-11-14T09:00:00+02:00',place:'Vieta bus patikslinta',price:19900,capacity:12,category:'camp',instructor:'field',published:true,prototype:true}
 ];
-
-const eventList = document.querySelector("#event-list");
-if (eventList) {
-  events.forEach(event => {
-    const card = document.createElement("article");
-    card.className = "event-card";
-    const add = (tag, text, className) => {
-      const element = document.createElement(tag);
-      element.textContent = text;
-      if (className) element.className = className;
-      card.append(element);
-      return element;
-    };
-    add("p", event.state, "event-state");
-    add("h3", event.title);
-    add("p", event.description);
-    const meta = add("div", "", "event-meta");
-    [event.place, event.price].forEach(text => {
-      const item = document.createElement("span");
-      item.textContent = text;
-      meta.append(item);
-    });
-    let bookingUrl;
-    try {
-      const url = new URL(event.registrationUrl);
-      if (url.protocol === "https:") bookingUrl = url.href;
-    } catch { /* An empty URL uses the email enquiry below. */ }
-    const action = add("a", bookingUrl ? "Registruotis ↗" : "Domina šis renginys ↗", "button secondary event-action");
-    action.href = bookingUrl || "mailto:info@astra-academy.net?subject=" + encodeURIComponent("Astra — " + event.title);
-    action.setAttribute("aria-label", (bookingUrl ? "Registruotis: " : "Pasiteirauti: ") + event.title);
-    eventList.append(card);
-  });
-}
-const year = document.querySelector("#year");
-if (year) year.textContent = new Date().getFullYear();
