@@ -1,61 +1,34 @@
-# Astra Academy website
+# Astra Academy
 
-Minimal static launch site for **Astra Academy**.
+Static website using HTML, CSS and JavaScript. No framework or build step.
 
-## Why this stack
+## Editing
 
-The site intentionally uses only HTML, CSS and a small amount of JavaScript.
+- Edit page text in `index.html`.
+- Edit colors, spacing and responsive layout in `styles.css`.
+- Edit the event list at the top of `app.js`.
 
-- no framework lock-in;
-- no build step;
-- very fast and cheap to host;
-- easy to deploy to Cloudflare;
-- easy for Džiugas to change through ChatGPT without learning a web framework.
+Event fields: `state`, `title`, `description`, `place`, `price`,
+and `registrationUrl`. Leave the URL empty for an event-specific email enquiry.
+Add a confirmed HTTPS booking URL to show a registration button.
+Keep dates and prices pending until confirmed.
 
-## Editing the site
+## Brand assets
 
-### Most common task: update events
+The eight supplied PNGs in `assets/` are preserved unchanged under descriptive
+names. WebP copies are resized for the page. The Spartan crest anchors the hero,
+the AA/star seal appears in the header and app icons, and the campfire appears
+beside the community invitation. The dark-lettered horizontal wordmark appears
+on a light footer panel. Other supplied variants are available for later use.
 
-Edit the `events` array at the top of `app.js`.
+## Preview and deployment
 
-Each event has:
+Serve the repository root with any static HTTP server, or open `index.html`
+directly. Deploy the root folder to a static host with no build command.
 
-- `state` — date/status;
-- `title`;
-- `description`;
-- `place`;
-- `price`.
+The social preview metadata targets `https://astra-academy.net`.
+Its image becomes available to social crawlers when
+`assets/social-preview.jpg` is hosted there.
 
-The page renders the cards automatically.
-
-### Change public copy
-
-Edit `index.html`.
-
-### Change visual design
-
-Edit `styles.css`.
-
-## Current status
-
-The site is intentionally **payment-ready, not payment-enabled**. The first public version uses an email CTA while Astra's legal entity, bank account, Google Workspace and merchant/payment account are being finalized.
-
-Once payments are ready, replace the event CTA/payment placeholders with the selected checkout flow. Avoid storing payment details or secrets in this repository.
-
-## Deployment
-
-Designed to work as a static site on Cloudflare with no build command.
-
-Suggested ownership model:
-
-- Dainius: repository / Cloudflare owner and recovery admin;
-- Džiugas: operational collaborator with permission to update public content;
-- domain remains owned by Dainius / the company.
-
-## Domain
-
-Target domain: `astra-academy.net`.
-
-## Content direction
-
-Astra Academy is positioned as an active self-development community built around real-world practice: resilience, initiative, strategy, practical skills and community. The site should remain concrete and avoid generic motivational/self-help language.
+Event enquiries open the visitor's email application. They do not reserve a
+place or collect payment.

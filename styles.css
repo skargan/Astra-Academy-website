@@ -420,3 +420,39 @@ footer p { margin: 0; }
   .button, nav a { transition: none; }
   .button:hover { transform: none; }
 }
+
+/* Supplied brand artwork, sized for its role rather than repeated everywhere. */
+.brand-seal { width: 56px; height: 56px; object-fit: contain; }
+.brand-name { font-family: Georgia, serif; font-size: 1.5rem; font-weight: 400; letter-spacing: .22em; line-height: 1.1; }
+.brand-name small { display: block; font-family: inherit; font-size: .55rem; letter-spacing: .48em; margin-top: 8px; color: var(--accent); }
+.hero { grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); gap: 48px; padding: 64px 0 80px; min-height: 670px; }
+.hero h1 { font-size: clamp(3.4rem,6.2vw,6rem); }
+.hero-identity { text-align: center; min-width: 0; }
+.hero-crest { display: block; width: 100%; max-width: 460px; height: auto; margin: 0 auto; }
+.identity-caption { margin: 12px 0 0; color: var(--accent); font-family: Georgia,serif; font-size: .85rem; letter-spacing: .32em; }
+.hero-note { color: var(--muted); font-size: .8rem; margin: 24px 0 0; }
+.button { gap: 14px; }
+.community-layout { display: grid; grid-template-columns: .6fr 1.4fr; gap: 72px; align-items: center; }
+.community-mark { width: 100%; max-width: 260px; height: auto; margin: auto; }
+.community-layout h2 { font-size: clamp(2.5rem,4.5vw,4.5rem); margin-bottom: 28px; }
+.community-layout p { max-width: 650px; color: var(--muted); font-size: 1.06rem; }
+.text-link { display: inline-flex; gap: 16px; color: var(--accent); padding: 12px 0; border-bottom: 1px solid var(--accent); }
+.event-action { margin-top: 24px; width: 100%; }
+.footer-wordmark { display: block; max-width: 280px; background: #e9e4d8; padding: 10px 14px; }
+.footer-wordmark img { display: block; width: 100%; height: auto; }
+.contact-status { color: var(--text); }
+@media (max-width: 900px) {
+  .hero { grid-template-columns: 1fr; gap: 24px; padding: 48px 0 64px; }
+  .hero-crest { max-width: 300px; }
+  .hero-identity { order: -1; }
+  .community-layout { gap: 32px; }
+}
+@media (max-width: 560px) {
+  .brand-seal { width: 44px; height: 44px; }
+  .brand-name { font-size: 1.25rem; }
+  .hero-identity { display: none; }
+  .hero h1 { font-size: clamp(2.8rem,12vw,4.2rem); }
+  .community-layout { grid-template-columns: 1fr; }
+  .community-mark { max-width: 150px; margin: 0; }
+  .community-layout h2 { font-size: 2.5rem; }
+}
