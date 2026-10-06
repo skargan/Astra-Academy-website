@@ -245,11 +245,14 @@ export async function createApp(options={}) {
   }
   if(route==='/api/newsletter'&&method==='POST'){
    rate(req,'newsletter',8);const body=json(),address=email(body.email);
+   const firstName=clean(body.firstName,80),lastName=clean(body.lastName,80);
+   if(!firstName||!lastName)fail('Įrašyk vardą ir pavardę.');
+   const fullName=firstName+' '+lastName;
    if(body.consent!==true)fail('Pažymėk, kad nori gauti laiškus.');
    const existing=(await query('SELECT * FROM subscribers WHERE email=?',address));
    if(existing?.status==='active')return {message:'Šiuo adresu naujienlaiškis jau užsakytas.'};
    const token=randomBytes(32).toString('hex');
-   (await run("INSERT INTO subscribers VALUES(?,?,'pending',?,?,?) ON CONFLICT(email) DO UPDATE SET name=excluded.name,status='pending',consent=excluded.consent,token=excluded.token,created=excluded.created",address,clean(body.name,80),now(),hash(token),now()));
+   (await run("INSERT INTO subscribers VALUES(?,?,'pending',?,?,?) ON CONFLICT(email) DO UPDATE SET name=excluded.name,status='pending',consent=excluded.consent,token=excluded.token,created=excluded.created",address,fullName,now(),hash(token),now()));
    const link=base+'/naujienlaiskis.html?confirm='+token;
    await queueMail(address,'Patvirtink Astra naujienlaiškį',link);
    return {message:canDemo(req)?'Demonstracijoje patvirtink prenumeratą žemiau esančia nuoroda. Laiškas nesiunčiamas.':'Patvirtinimo nuorodos ieškok savo el. pašte.',demoLink:canDemo(req)?link:undefined};

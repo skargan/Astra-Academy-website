@@ -313,7 +313,7 @@ footer {
   padding: 38px 0;
   border-top: 1px solid var(--line);
   display: grid;
-  grid-template-columns: 1fr 1fr auto;
+  grid-template-columns: 1fr auto;
   gap: 30px;
   align-items: center;
   color: var(--muted);
@@ -438,8 +438,6 @@ footer p { margin: 0; }
 .community-layout p { max-width: 650px; color: var(--muted); font-size: 1.06rem; }
 .text-link { display: inline-flex; gap: 16px; color: var(--accent); padding: 12px 0; border-bottom: 1px solid var(--accent); }
 .event-action { margin-top: 24px; width: 100%; }
-.footer-wordmark { display: block; max-width: 280px; background: #e9e4d8; padding: 10px 14px; }
-.footer-wordmark img { display: block; width: 100%; height: auto; }
 .contact-status { color: var(--text); }
 @media (max-width: 900px) {
   .hero { grid-template-columns: 1fr; gap: 24px; padding: 48px 0 64px; }

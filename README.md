@@ -84,6 +84,6 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for settings, [OPERATIONS.md](OPERATIONS.md)
 for ownership, backup and migration, and `.env.hostinger.example` for a public
 read-only preview. Public modes require MySQL; local demo remains SQLite.
 
-The app is not deployed. Public preview does not collect accounts, newsletter
+The app is deployed as a public preview. Public preview does not collect accounts, newsletter
 subscriptions, bookings or payments. Production requires configured email,
 final offers/terms and verified provider integration before payment activation.

@@ -66,7 +66,12 @@ test('application, acceptance, membership, booking, attendance and refunds persi
   assert.equal((await call('/api/me',undefined,actors.second)).data.membership.cycle,'year');
   assert.equal((await call('/api/profile',{name:'Forged'},actors.second,{Origin:'https://attacker.test'})).status,403);
   assert.equal((await call('/api/profile',{name:'Forged'},actors.second,{'X-CSRF-Token':'wrong'})).status,403);
-  r=await call('/api/newsletter',{name:'Reader',email:'reader@example.test',consent:true});assert.equal(r.status,200);
+  assert.equal((await call('/api/newsletter',{firstName:'Reader',email:'reader@example.test',consent:true})).status,400);
+  assert.equal((await call('/api/newsletter',{lastName:'Example',email:'reader@example.test',consent:true})).status,400);
+  assert.equal((await call('/api/newsletter',{firstName:'  ',lastName:'Example',email:'reader@example.test',consent:true})).status,400);
+  assert.equal(await app.db.prepare('SELECT * FROM subscribers WHERE email=?').get('reader@example.test'),undefined);
+  r=await call('/api/newsletter',{firstName:'Reader',lastName:'Example',email:'reader@example.test',consent:true});assert.equal(r.status,200);
+  assert.equal((await app.db.prepare('SELECT name FROM subscribers WHERE email=?').get('reader@example.test')).name,'Reader Example');
   const confirmation=new URL(r.data.demoLink).searchParams.get('confirm');
   assert.equal((await app.db.prepare('SELECT status FROM subscribers WHERE email=?').get('reader@example.test')).status,'pending');
   await call('/api/newsletter/confirm',{token:confirmation});
