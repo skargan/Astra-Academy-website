@@ -145,7 +145,7 @@ async function admin(){
  bindForm('#instructor-form','/api/admin/instructor',refresh);
 }
 async function main(){
- document.querySelectorAll('.site-header nav a').forEach(a=>{if(new URL(a.href).pathname===location.pathname)a.setAttribute('aria-current','page');});
+ document.querySelectorAll('.site-header nav a').forEach(a=>{if(new URL(a.href).pathname===(location.pathname==='/'?'/index.html':location.pathname))a.setAttribute('aria-current','page');});
  try{
   [config,me,events]=await Promise.all([api('/api/config'),api('/api/me'),api('/api/events')]);
   if(config.demo){const banner=$('#prototype-banner');if(banner){banner.hidden=false;banner.textContent='Prototipas · pavyzdinės kainos ir datos · demonstraciniai mokėjimai, pinigai nenuskaičiuojami';}}
