@@ -480,10 +480,10 @@ export async function createApp(options={}) {
    }else{
     if(!['GET','HEAD'].includes(req.method))fail('Metodas neleidžiamas.',405);
     let pathname;try{pathname=decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname);}catch{fail('Neteisingas adresas.',400);}
-    if(!(/^\/[a-z0-9-]+\.(html|css|js)$/.test(pathname)||/^\/assets\/[a-z0-9-]+\.(png|webp|jpg|svg)$/.test(pathname)))fail('Nerasta.',404);
+    if(!(/^\/[a-z0-9-]+\.(html|css|js)$/.test(pathname)||/^\/assets\/[a-z0-9-]+\.(png|webp|jpg|svg)$/.test(pathname)||/^\/assets\/fonts\/[a-z0-9-]+\.woff2$/.test(pathname)))fail('Nerasta.',404);
     const file=path.join(root,pathname.slice(1));let body;
     try{body=await readFile(file);}catch(e){if(e.code==='ENOENT')fail('Puslapis nerastas.',404);throw e;}
-    const types={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.svg':'image/svg+xml'};
+    const types={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.svg':'image/svg+xml','.woff2':'font/woff2'};
     res.setHeader('Content-Type',types[path.extname(file)]);res.end(req.method==='HEAD'?undefined:body);
    }
   }catch(e){res.statusCode=e.status||500;res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify({error:e.status?e.message:'Užklausa nepavyko. Bandyk dar kartą.'}));if(!e.status)console.error(e.message);}
