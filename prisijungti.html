@@ -35,7 +35,7 @@
 <h1>Gera sugrįžti.</h1>
 <p class="hero-lead">Prisijunk ir peržiūrėk savo renginius bei narystę.</p>
 </div>
-<form id="login-form" class="form-panel">
+<form method="post" id="login-form" class="form-panel">
 <label>El. paštas<input name="email" type="email" autocomplete="username" required>
 </label>
 <label>Slaptažodis<input name="password" type="password" autocomplete="current-password" required>
@@ -48,7 +48,7 @@
 </div>
 <details id="reset-details">
 <summary>Pamiršai slaptažodį?</summary>
-<form id="reset-request-form" class="form-panel">
+<form method="post" id="reset-request-form" class="form-panel">
 <label>El. paštas<input name="email" type="email"  required>
 </label>
 <button class="button secondary">Siųsti atkūrimo nuorodą</button>
@@ -56,7 +56,7 @@
 </p>
 </form>
 </details>
-<form id="reset-form" class="form-panel" hidden>
+<form method="post" id="reset-form" class="form-panel" hidden>
 <label>Naujas slaptažodis<input name="password" type="password" minlength="12" autocomplete="new-password" required>
 </label>
 <button class="button primary">Pakeisti slaptažodį</button>

@@ -58,11 +58,15 @@ export async function createApp(options={}) {
  };
  async function queueMail(to,subject,body) {
   const mailId=id();(await run('INSERT INTO mail(id,email,subject,body,created) VALUES(?,?,?,?,?)',mailId,to,subject,body,now()));
-  if(!demo&&process.env.RESEND_API_KEY&&process.env.EMAIL_FROM) {
+  if(!demo||options.sendMail) {
    try{
+    if(options.sendMail)await options.sendMail({to,subject,body});
+    else{
     const r=await fetch('https://api.resend.com/emails',{method:'POST',headers:{Authorization:'Bearer '+process.env.RESEND_API_KEY,'Content-Type':'application/json','Idempotency-Key':mailId},body:JSON.stringify({from:process.env.EMAIL_FROM,to:[to],subject,text:body}),signal:AbortSignal.timeout(15000)});
-    (await run('UPDATE mail SET status=? WHERE id=?',r.ok?'sent':'failed',mailId));
-   }catch{(await run('UPDATE mail SET status=? WHERE id=?','failed',mailId));}
+    if(!r.ok)throw new Error('Email delivery failed');
+    }
+    await run("UPDATE mail SET status='sent' WHERE id=?",mailId);
+   }catch{await run("UPDATE mail SET status='failed' WHERE id=?",mailId);fail('Duomenys išsaugoti, bet laiško išsiųsti nepavyko. Pabandyk siųsti nuorodą dar kartą arba parašyk mums.',503);}
   }
  }
  async function tokenLink(user,kind) {
@@ -173,7 +177,7 @@ export async function createApp(options={}) {
   const user=session?(await query('SELECT * FROM users WHERE id=?',session.user_id)):null;
   const auth=()=>{if(!user)fail('Pirmiausia prisijunk.',401);if(!user.verified)fail('Patvirtink savo el. paštą.',403);return user;};
   const admin=()=>{auth();if(user.role!=='admin')fail('Reikalinga administratoriaus prieiga.',403);};
-  const json=()=>{try{return JSON.parse(raw.toString('utf8')||'{}');}catch{fail('Neteisinga užklausa.');}};
+  const json=()=>{try{const value=JSON.parse(raw.toString('utf8')||'{}');if(!value||typeof value!=='object'||Array.isArray(value))fail('Neteisinga užklausa.');return value;}catch{fail('Neteisinga užklausa.');}};
   if(route==='/api/webhook'&&method==='POST'){await webhook(raw,req.headers['stripe-signature']);return {received:true};}
   if(method!=='GET'){
    if(req.headers.origin!==base) fail('Užklausa iš kito puslapio neleidžiama.',403);
@@ -184,7 +188,7 @@ export async function createApp(options={}) {
   if(route==='/api/events'&&method==='GET'){
    (await expireReservations());const result=[];
    for(const e of (await entities('events')).filter(e=>e.published))result.push({...e,available:Math.max(0,e.capacity-(await query("SELECT COUNT(*) count FROM bookings WHERE event_id=? AND status IN ('pending','confirmed','refund_requested')",e.id)).count)});
-   return result;
+   return result.sort((a,b)=>Date.parse(a.date)-Date.parse(b.date)||a.id.localeCompare(b.id));
   }
   if(route==='/api/me'&&method==='GET') return user?{user:publicUser(user),csrf:hash('csrf:'+cookie),application:(await query('SELECT * FROM applications WHERE user_id=?',user.id)),membership:(await query('SELECT * FROM memberships WHERE user_id=?',user.id)),bookings:(await all('SELECT * FROM bookings WHERE user_id=? ORDER BY created DESC',user.id)),badges:(await all('SELECT badge FROM badges WHERE user_id=?',user.id)),requests:(await all('SELECT * FROM requests WHERE user_id=?',user.id)),discord:(await activeMembership(user))?process.env.DISCORD_INVITE_URL||'':null}:{user:null};
   if(route==='/api/register'&&method==='POST'){
@@ -200,8 +204,18 @@ export async function createApp(options={}) {
   if(route==='/api/verify'&&method==='POST'){
    rate(req,'verify',20);const token=(await query("SELECT * FROM tokens WHERE token=? AND kind='verify' AND expires>?",hash(clean(json().token,100)),now()));
    if(!token)fail('Nuoroda nebegalioja.');
-   (await transaction(async ()=>{(await run('UPDATE users SET verified=1 WHERE id=?',token.user_id));(await run('DELETE FROM tokens WHERE token=?',token.token));}));
+   (await transaction(async ()=>{
+    if(!await query("SELECT token FROM tokens WHERE token=? AND kind='verify' AND expires>?",token.token,now()))fail('Nuoroda nebegalioja.');
+    (await run('UPDATE users SET verified=1 WHERE id=?',token.user_id));(await run('DELETE FROM tokens WHERE token=?',token.token));}));
    return {message:'El. paštas patvirtintas. Gali prisijungti.'};
+  }
+  if(route==='/api/verify/request'&&method==='POST'){
+   if(!user)fail('Pirmiausia prisijunk.',401);
+   rate(req,'verify-request',5);
+   if(user.verified)return {message:'El. paštas jau patvirtintas.'};
+   const link=await tokenLink(user,'verify');
+   await queueMail(user.email,'Patvirtink Astra paskyrą',link);
+   return {message:'Patvirtinimo nuorodos ieškok savo el. pašte.',demoLink:canDemo(req)?link:undefined};
   }
   if(route==='/api/login'&&method==='POST'){
    rate(req,'login',20);const body=json(),u=(await query('SELECT * FROM users WHERE email=?',email(body.email)));
@@ -228,7 +242,9 @@ export async function createApp(options={}) {
    rate(req,'reset-confirm',15);const body=json(),token=(await query("SELECT * FROM tokens WHERE token=? AND kind='reset' AND expires>?",hash(clean(body.token,100)),now()));
    if(!token)fail('Nuoroda nebegalioja.');
    const key=await passwordHash(body.password);
-   (await transaction(async ()=>{(await run('UPDATE users SET password=? WHERE id=?',key,token.user_id));(await run('DELETE FROM sessions WHERE user_id=?',token.user_id));(await run('DELETE FROM tokens WHERE user_id=? AND kind=?',token.user_id,'reset'));}));
+   (await transaction(async ()=>{
+    if(!await query("SELECT token FROM tokens WHERE token=? AND kind='reset' AND expires>?",token.token,now()))fail('Nuoroda nebegalioja.');
+    (await run('UPDATE users SET password=? WHERE id=?',key,token.user_id));(await run('DELETE FROM sessions WHERE user_id=?',token.user_id));(await run('DELETE FROM tokens WHERE user_id=? AND kind=?',token.user_id,'reset'));}));
    return {message:'Slaptažodis pakeistas. Prisijunk iš naujo.'};
   }
   if(route==='/api/profile'&&method==='POST'){
@@ -304,10 +320,14 @@ export async function createApp(options={}) {
      customer=created.id;
      if(membership)(await run('UPDATE memberships SET customer=? WHERE user_id=?',customer,user.id));
     }
-    const params={mode:kind==='membership'?'subscription':'payment',customer,'payment_method_types[0]':'card','line_items[0][price_data][currency]':'eur','line_items[0][price_data][unit_amount]':String(amount),'line_items[0][price_data][product_data][name]':kind==='membership'?plans.find(p=>p.id===JSON.parse(target).plan).name:(await entities('events')).find(e=>e.id===body.eventId).title,'line_items[0][quantity]':'1',success_url:base+'/paskyra.html?payment=processing',cancel_url:base+'/paskyra.html?payment=canceled','metadata[order_id]':orderId,expires_at:String(Math.floor((now()+30*60000)/1000))};
+    const params={mode:kind==='membership'?'subscription':'payment',customer,'payment_method_types[0]':'card','line_items[0][price_data][currency]':'eur','line_items[0][price_data][unit_amount]':String(amount),'line_items[0][price_data][product_data][name]':kind==='membership'?plans.find(p=>p.id===JSON.parse(target).plan).name:(await entities('events')).find(e=>e.id===body.eventId).title,'line_items[0][quantity]':'1',success_url:base+'/paskyra.html?payment=processing',cancel_url:base+'/paskyra.html?payment=canceled','metadata[order_id]':orderId,expires_at:String(Math.floor((now()+35*60000)/1000))};
     if(kind==='membership'){params['line_items[0][price_data][recurring][interval]']=JSON.parse(target).cycle;params['subscription_data[metadata][user_id]']=user.id;}
     const checkout=await stripe('checkout/sessions',params,'POST',undefined,orderId);
-    (await run('UPDATE orders SET session=? WHERE id=?',checkout.id,orderId));return {url:checkout.url};
+    await transaction(async()=>{
+     const expiry=checkout.expires_at*1000;
+     await run('UPDATE orders SET session=?,expires=? WHERE id=?',checkout.id,expiry,orderId);
+     if(kind==='event')await run('UPDATE bookings SET expires=? WHERE id=?',expiry,target);
+    });return {url:checkout.url};
    }catch(e){(await transaction(async ()=>{(await run("UPDATE orders SET status='failed' WHERE id=?",orderId));if(kind==='event')(await run("UPDATE bookings SET status='failed' WHERE id=?",target));}));throw e;}
   }
   if(route==='/api/order'&&method==='GET'){auth();const order=(await query('SELECT id,kind,amount,status,target FROM orders WHERE id=? AND user_id=?',url.searchParams.get('id'),user.id));if(!order)fail('Nerasta.',404);return order;}
@@ -325,7 +345,10 @@ export async function createApp(options={}) {
    auth();const order=(await query("SELECT * FROM orders WHERE id=? AND user_id=? AND status='pending'",json().orderId,user.id));
    if(!order)fail('Užsakymas nebegalioja.');
    if(!demo&&order.session)await stripe('checkout/sessions/'+order.session+'/expire',{});
-   (await transaction(async ()=>{(await run("UPDATE orders SET status='expired' WHERE id=?",order.id));if(order.kind==='event')(await run("UPDATE bookings SET status='expired' WHERE id=?",order.target));}));
+   (await transaction(async ()=>{
+    const current=await query('SELECT status FROM orders WHERE id=?',order.id);
+    if(current?.status!=='pending')fail('Užsakymo būsena pasikeitė. Atnaujink paskyrą.');
+    (await run("UPDATE orders SET status='expired' WHERE id=?",order.id));if(order.kind==='event')(await run("UPDATE bookings SET status='expired' WHERE id=?",order.target));}));
    return {message:'Neapmokėtas užsakymas atšauktas.'};
   }
   if(route==='/api/demo-pay'&&method==='POST'){
@@ -383,7 +406,7 @@ export async function createApp(options={}) {
    if(!/^[a-z0-9-]{1,50}$/.test(b.id)||!clean(b.title,100)||!Number.isSafeInteger(b.price)||b.price<0||!Number.isSafeInteger(b.capacity)||b.capacity<1||b.capacity>1000||!Number.isFinite(Date.parse(b.date))||!['hike','seminar','community','intro','camp'].includes(b.category))fail('Patikrink renginio laukus.');
    const count=(await query("SELECT COUNT(*) count FROM bookings WHERE event_id=? AND status IN ('confirmed','pending','refund_requested')",b.id)).count;
    if(b.capacity<count)fail('Talpa mažesnė už esamų registracijų skaičių.');
-   if(count&&previous&&(b.date!==previous.date||b.price!==previous.price))fail('Renginio data ir kaina nekeičiama, kai yra registracijų. Atšauk renginį ir sukurk naują.');
+   if(count&&previous&&(b.date!==previous.date||clean(b.place,150)!==previous.place))fail('Kai yra registracijų, datos ar vietos pakeitimą reikia suderinti su dalyviais. Kaina keičiama tik naujiems užsakymams.');
    const event={id:b.id,title:clean(b.title,100),description:clean(b.description,1000),date:b.date,place:clean(b.place,150),price:b.price,capacity:b.capacity,category:b.category,instructor:clean(b.instructor,50),published:!!b.published,prototype:!!b.prototype,canceled:previous?.canceled||false};
    (await run('INSERT INTO events VALUES(?,?) ON CONFLICT(id) DO UPDATE SET payload=excluded.payload',event.id,JSON.stringify(event)));(await audit(user.id,'event:save',event.id));return {ok:true};
    });
@@ -445,6 +468,7 @@ export async function createApp(options={}) {
   res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','strict-origin-when-cross-origin');
   res.setHeader('Content-Security-Policy',"default-src 'self'; img-src 'self' data:; script-src 'self'; style-src 'self'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'self'");
   res.setHeader('X-Frame-Options','DENY');
+  if(preview)res.setHeader('X-Robots-Tag','noindex, nofollow');
   try{
    if(demo&&!canDemo(req))fail('Demo is local only.',403);
    const url=new URL(req.url,base);
@@ -455,9 +479,10 @@ export async function createApp(options={}) {
     res.setHeader('Content-Type','application/json; charset=utf-8');res.end(JSON.stringify(result));
    }else{
     if(!['GET','HEAD'].includes(req.method))fail('Metodas neleidžiamas.',405);
-    const pathname=decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname);
+    let pathname;try{pathname=decodeURIComponent(url.pathname==='/'?'/index.html':url.pathname);}catch{fail('Neteisingas adresas.',400);}
     if(!(/^\/[a-z0-9-]+\.(html|css|js)$/.test(pathname)||/^\/assets\/[a-z0-9-]+\.(png|webp|jpg|svg)$/.test(pathname)))fail('Nerasta.',404);
-    const file=path.join(root,pathname.slice(1)),body=await readFile(file);
+    const file=path.join(root,pathname.slice(1));let body;
+    try{body=await readFile(file);}catch(e){if(e.code==='ENOENT')fail('Puslapis nerastas.',404);throw e;}
     const types={'.html':'text/html; charset=utf-8','.css':'text/css','.js':'text/javascript','.png':'image/png','.webp':'image/webp','.jpg':'image/jpeg','.svg':'image/svg+xml'};
     res.setHeader('Content-Type',types[path.extname(file)]);res.end(req.method==='HEAD'?undefined:body);
    }
